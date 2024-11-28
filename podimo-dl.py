@@ -13,18 +13,18 @@ class PodimoAPI:
     def __init__(self):
         self.transport1 = AIOHTTPTransport(url="https://studio.podimo.com/graphql")
         self.transport2 = AIOHTTPTransport(url="https://podimo.com/graphql")
-        self.client1 = Client(transport=self.transport1, fetch_schema_from_transport=False)
-        self.client2 = Client(transport=self.transport2, fetch_schema_from_transport=False)
+        self.studio_client = Client(transport=self.transport1, fetch_schema_from_transport=False)
+        self.public_client = Client(transport=self.transport2, fetch_schema_from_transport=False)
 
     def login(self, email, password, is_creator):
         if is_creator:
-            result = self.client1.execute(queryTokenWithCredentials, variable_values={
+            result = self.studio_client.execute(queryTokenWithCredentials, variable_values={
                 'email': email,
                 'password': password,
                 'scope': 'CREATOR',
             })
         else:
-            result = self.client.execute(queryTokenWithCredentials, variable_values={
+            result = self.public_client.execute(queryTokenWithCredentials, variable_values={
                 'email': email,
                 'password': password,
             })
@@ -40,7 +40,7 @@ class PodimoAPI:
         }
 
     def search_podcast(self, search_query, region="de"):
-        result = self.client2.execute(queryUsePodcastsExistQuery, variable_values={
+        result = self.public_client.execute(queryUsePodcastsExistQuery, variable_values={
             'search': search_query,
             'region': region
         })
@@ -50,7 +50,7 @@ class PodimoAPI:
         return None
 
     def get_podcast_episodes(self, podcast_id, limit=1000, offset=0):
-        result = self.client.execute(queryPodcastEpisodes, variable_values={
+        result = self.public_client.execute(queryPodcastEpisodes, variable_values={
             'podcastId': podcast_id,
             'limit': limit,
             'offset': offset,

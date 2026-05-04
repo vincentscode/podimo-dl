@@ -1,0 +1,4 @@
+gql[aiohttp]
+eyed3
+requests
+python-dotenv

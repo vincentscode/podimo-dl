@@ -6,8 +6,27 @@ import os
 import re
 import eyed3
 from pathlib import Path
+from dotenv import load_dotenv
 from mutations import *
 from queries import *
+
+# The auto-generated queryPodcastEpisodes in queries.py is the studio/creator
+# variant and does not select audio.url — which download_episode needs.
+# Override it here with the listener-facing field set.
+queryPodcastEpisodesForDownload = gql('''
+query PodcastEpisodes($podcastId: String!, $limit: Int!, $offset: Int!) {
+  podcastEpisodes(podcastId: $podcastId, limit: $limit, offset: $offset, converted: true, published: true) {
+    id
+    title
+    description
+    datetime
+    accessLevel
+    audio {
+      url
+    }
+  }
+}
+''')
 
 class PodimoAPI:
     def __init__(self):
@@ -27,6 +46,7 @@ class PodimoAPI:
             result = self.public_client.execute(queryTokenWithCredentials, variable_values={
                 'email': email,
                 'password': password,
+                'scope': 'MOBILE',
             })
 
         token = result["tokenWithCredentials"]["token"]
@@ -35,27 +55,32 @@ class PodimoAPI:
             'user-os': 'android',
             'user-locale': 'en-US',
             'user-agent': 'okhttp/4.9.1',
-            'Host': 'graphql.pdm-gateway.com',
             'authorization': token,
         }
 
     def search_podcast(self, search_query, region="de"):
         result = self.public_client.execute(queryUsePodcastsExistQuery, variable_values={
             'search': search_query,
-            'region': region
         })
-        search_result = [r for r in result["publicSearch"] if search_query in r["title"]]
+        search_result = [r for r in result["podcastsAutocomplete"] if search_query in r["title"]]
         if len(search_result) > 0:
             return search_result[0]
         return None
 
-    def get_podcast_episodes(self, podcast_id, limit=1000, offset=0):
-        result = self.public_client.execute(queryPodcastEpisodes, variable_values={
-            'podcastId': podcast_id,
-            'limit': limit,
-            'offset': offset,
-        })
-        return result["podcastEpisodes"]
+    def get_podcast_episodes(self, podcast_id, page_size=100):
+        episodes = []
+        offset = 0
+        while True:
+            result = self.public_client.execute(queryPodcastEpisodesForDownload, variable_values={
+                'podcastId': podcast_id,
+                'limit': page_size,
+                'offset': offset,
+            })
+            page = result["podcastEpisodes"]
+            episodes.extend(page)
+            if len(page) < page_size:
+                return episodes
+            offset += page_size
 
 
     def download_episode(self, podcast_episode, output_folder=None, overwrite=False):
@@ -81,37 +106,40 @@ def do_it_question(question):
     xy = input(question + " (Y/n) > ")
     return not xy.lower() == "n"
 
+UUID_RE = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
+
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-p", "--podcast", )
-    parser.add_argument("-c", "--config", action="store_true")
+    parser.add_argument("-p", "--podcast", help="podcast name (substring match) or UUID")
     parser.add_argument("-d", "--download", action="store_true")
     parser.add_argument("--premium-only", action="store_true")
     parser.add_argument("--overwrite", action="store_true")
     parser.add_argument("-o", "--output")
     args = parser.parse_args()
 
-    if (args.config and os.path.exists("config.py")) or do_it_question("Use config.py?"):
-        from config import email, password, is_creator
-    else:
-        email = input("Email > ")
-        password = input("Password > ")
-        is_creator = False
+    load_dotenv()
+    email = os.getenv("PODIMO_EMAIL") or input("Email > ")
+    password = os.getenv("PODIMO_PASSWORD") or input("Password > ")
+    is_creator = os.getenv("PODIMO_IS_CREATOR", "").strip().lower() in ("1", "true", "yes")
 
     podimo = PodimoAPI()
     podimo.login(email, password, is_creator)
 
     if not args.podcast:
-        search_string = input("Podcast Name > ")
+        search_string = input("Podcast Name or UUID > ")
     else:
         search_string = args.podcast
 
-    podcast = podimo.search_podcast(search_string)
-    if not podcast:
-        print("Not found!")
-        return
+    if UUID_RE.match(search_string.strip()):
+        podcast_id = search_string.strip()
+    else:
+        podcast = podimo.search_podcast(search_string)
+        if not podcast:
+            print("Not found!")
+            return
+        podcast_id = podcast["id"]
 
-    episodes = podimo.get_podcast_episodes(podcast["id"])
+    episodes = podimo.get_podcast_episodes(podcast_id)
 
     if args.premium_only:
         episodes = [x for x in filter(lambda e: e["accessLevel"] == "PREMIUM", episodes)]

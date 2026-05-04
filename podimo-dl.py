@@ -28,6 +28,19 @@ query PodcastEpisodes($podcastId: String!, $limit: Int!, $offset: Int!) {
 }
 ''')
 
+queryPodcastInfoForDownload = gql('''
+query PodcastInfo($podcastId: String!) {
+  publicPodcastById(podcastId: $podcastId) {
+    id
+    title
+  }
+}
+''')
+
+
+def sanitize_filename(name):
+    return "".join(c for c in name if c.isalpha() or c.isdigit() or c in ' #').rstrip() or "untitled"
+
 class PodimoAPI:
     def __init__(self):
         self.transport1 = AIOHTTPTransport(url="https://studio.podimo.com/graphql")
@@ -67,6 +80,13 @@ class PodimoAPI:
             return search_result[0]
         return None
 
+    def get_podcast_title(self, podcast_id):
+        result = self.public_client.execute(queryPodcastInfoForDownload, variable_values={
+            'podcastId': podcast_id,
+        })
+        info = result.get("publicPodcastById")
+        return info["title"] if info else None
+
     def get_podcast_episodes(self, podcast_id, page_size=100):
         episodes = []
         offset = 0
@@ -87,8 +107,7 @@ class PodimoAPI:
         name = podcast_episode["title"]
         url = podcast_episode["audio"]["url"]
 
-        sane_name = "".join([c for c in name if c.isalpha() or c.isdigit() or c in ' #']).rstrip()
-        fn = f'{sane_name}.mp3'
+        fn = f'{sanitize_filename(name)}.mp3'
         if output_folder:
             fn = f'{output_folder}/{fn}'
 
@@ -132,12 +151,14 @@ def main():
 
     if UUID_RE.match(search_string.strip()):
         podcast_id = search_string.strip()
+        podcast_title = podimo.get_podcast_title(podcast_id) or podcast_id
     else:
         podcast = podimo.search_podcast(search_string)
         if not podcast:
             print("Not found!")
             return
         podcast_id = podcast["id"]
+        podcast_title = podcast["title"]
 
     episodes = podimo.get_podcast_episodes(podcast_id)
 
@@ -148,8 +169,12 @@ def main():
         print(" > ", e["title"])
 
     if args.download or do_it_question("Download Episodes?"):
+        base_dir = Path(args.output) if args.output else Path("episodes")
+        target_dir = base_dir / sanitize_filename(podcast_title)
+        target_dir.mkdir(parents=True, exist_ok=True)
+
         for e in episodes:
-            fn = podimo.download_episode(e, args.output, args.overwrite)
+            fn = podimo.download_episode(e, str(target_dir), args.overwrite)
 
             title_with_track_num = re.match(r"^#?([0-9]{1,}) (.+)", e["title"])
             if title_with_track_num:

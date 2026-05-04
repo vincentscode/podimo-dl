@@ -2,3 +2,5 @@ config.py
 .venv/
 __pycache__/
 .env
+episodes/
+.claude/

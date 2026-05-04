@@ -29,8 +29,8 @@ query PodcastEpisodes($podcastId: String!, $limit: Int!, $offset: Int!) {
 ''')
 
 queryPodcastInfoForDownload = gql('''
-query PodcastInfo($podcastId: String!) {
-  publicPodcastById(podcastId: $podcastId) {
+query PodcastInfo($showId: String!) {
+  podcastById(podcastId: $showId) {
     id
     title
   }
@@ -82,9 +82,9 @@ class PodimoAPI:
 
     def get_podcast_title(self, podcast_id):
         result = self.public_client.execute(queryPodcastInfoForDownload, variable_values={
-            'podcastId': podcast_id,
+            'showId': podcast_id,
         })
-        info = result.get("publicPodcastById")
+        info = result.get("podcastById")
         return info["title"] if info else None
 
     def get_podcast_episodes(self, podcast_id, page_size=100):

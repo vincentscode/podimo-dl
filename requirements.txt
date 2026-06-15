@@ -1,0 +1,2 @@
+gql[aiohttp] >= 3.5.3
+eyeD3 >= 0.9.9

@@ -1,17 +1,13 @@
 # podimo-dl
 
-## Requirements
+### Setup
 
-- Python
-- [`gql[aiohttp]`](https://github.com/graphql-python/gql) — GraphQL client
-- [`eyed3`](https://eyed3.readthedocs.io) — ID3 tag writing
-
-### Setup (recommended: virtual environment)
+You need [Python](https://www.python.org/) to run this program. Depending on your installation the program may be invoced as either `python` or `python3`.
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-pip install gql[aiohttp] eyed3
+pip install -r requirements.txt
 ```
 
 ## Usage
@@ -35,6 +31,6 @@ python podimo-dl.py --config -p "Podcast Name" --download
 | `-p / --podcast` | Podcast name to search for |
 | `-c / --config` | Load credentials from `config.py` |
 | `-d / --download` | Download without prompting |
-| `--premium-only` | Only download PREMIUM episodes |
-| `--overwrite` | Re-download files that already exist |
+| `--premium-only` | Only download premium episodes |
+| `--overwrite` | Re-download and overwrite files that already exist |
 | `-o / --output` | Output directory for downloaded files |

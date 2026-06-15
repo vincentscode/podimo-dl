@@ -89,8 +89,8 @@ def do_it_question(question):
     try:
         xy = input(question + " (Y/n) > ")
     except EOFError:
-        print("y")
-        return True
+        print("\nNo interactive input available. Use config.py or pass --config.")
+        return False
     return not xy.lower() == "n"
 
 def main():

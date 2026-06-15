@@ -19,9 +19,6 @@ build/
 *.opus
 *.wav
 
-# notes
-NOTES.md
-
 # ide
 .vscode/
 .idea/

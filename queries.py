@@ -332,7 +332,6 @@ queryPodcastEpisodes = gql('''
 query PodcastEpisodes($podcastId: String!, $limit: Int!, $offset: Int!) {
   podcastEpisodes(converted: false, published: false, podcastId: $podcastId, offset: $offset, limit: $limit) {
     id
-    id
     description
     datetime
     podcastId
@@ -343,6 +342,7 @@ query PodcastEpisodes($podcastId: String!, $limit: Int!, $offset: Int!) {
     title
     imageUrl
     deepLink
+    audioUrl
     payoutPlan {
       shortTitle
     }

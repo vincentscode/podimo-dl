@@ -1,2 +1,26 @@
+# credentials
 config.py
+
+# python
 __pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+*.egg-info/
+dist/
+build/
+
+# downloads
+*.mp3
+*.m4a
+*.ogg
+*.opus
+*.wav
+
+# ide
+.vscode/
+.idea/
+*.swp
+*.swo

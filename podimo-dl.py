@@ -27,6 +27,7 @@ class PodimoAPI:
             result = self.public_client.execute(queryTokenWithCredentials, variable_values={
                 'email': email,
                 'password': password,
+                'scope': 'MOBILE',
             })
 
         token = result["tokenWithCredentials"]["token"]
@@ -35,32 +36,39 @@ class PodimoAPI:
             'user-os': 'android',
             'user-locale': 'en-US',
             'user-agent': 'okhttp/4.9.1',
-            'Host': 'graphql.pdm-gateway.com',
             'authorization': token,
         }
 
     def search_podcast(self, search_query, region="de"):
         result = self.public_client.execute(queryUsePodcastsExistQuery, variable_values={
             'search': search_query,
-            'region': region
         })
-        search_result = [r for r in result["publicSearch"] if search_query in r["title"]]
+        search_result = [r for r in result["podcastsAutocomplete"] if search_query in r["title"]]
         if len(search_result) > 0:
             return search_result[0]
         return None
 
-    def get_podcast_episodes(self, podcast_id, limit=1000, offset=0):
-        result = self.public_client.execute(queryPodcastEpisodes, variable_values={
-            'podcastId': podcast_id,
-            'limit': limit,
-            'offset': offset,
-        })
-        return result["podcastEpisodes"]
+    def get_podcast_episodes(self, podcast_id):
+        episodes = []
+        batch = 100
+        offset = 0
+        while True:
+            result = self.public_client.execute(queryPodcastEpisodes, variable_values={
+                'podcastId': podcast_id,
+                'limit': batch,
+                'offset': offset,
+            })
+            page = result["podcastEpisodes"]
+            episodes.extend(page)
+            if len(page) < batch:
+                break
+            offset += batch
+        return episodes
 
 
     def download_episode(self, podcast_episode, output_folder=None, overwrite=False):
         name = podcast_episode["title"]
-        url = podcast_episode["audio"]["url"]
+        url = podcast_episode["audioUrl"]
 
         sane_name = "".join([c for c in name if c.isalpha() or c.isdigit() or c in ' #']).rstrip()
         fn = f'{sane_name}.mp3'
@@ -78,7 +86,11 @@ class PodimoAPI:
         return fn
 
 def do_it_question(question):
-    xy = input(question + " (Y/n) > ")
+    try:
+        xy = input(question + " (Y/n) > ")
+    except EOFError:
+        print("\nNo interactive input available. Use config.py or pass --config.")
+        return False
     return not xy.lower() == "n"
 
 def main():
@@ -94,15 +106,23 @@ def main():
     if (args.config and os.path.exists("config.py")) or do_it_question("Use config.py?"):
         from config import email, password, is_creator
     else:
-        email = input("Email > ")
-        password = input("Password > ")
+        try:
+            email = input("Email > ")
+            password = input("Password > ")
+        except EOFError:
+            print("\nNo interactive input available. Use config.py or pass --config.")
+            return
         is_creator = False
 
     podimo = PodimoAPI()
     podimo.login(email, password, is_creator)
 
     if not args.podcast:
-        search_string = input("Podcast Name > ")
+        try:
+            search_string = input("Podcast Name > ")
+        except EOFError:
+            print("\nNo podcast name provided. Use -p/--podcast to specify one.")
+            return
     else:
         search_string = args.podcast
 

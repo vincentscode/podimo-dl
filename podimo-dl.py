@@ -9,6 +9,13 @@ from pathlib import Path
 from mutations import *
 from queries import *
 
+UUID_RE = re.compile(
+    r"^[0-9a-fA-F]{8}-"
+    r"[0-9a-fA-F]{4}-"
+    r"[0-9a-fA-F]{4}-"
+    r"[0-9a-fA-F]{4}-"
+    r"[0-9a-fA-F]{12}$"
+)
 class PodimoAPI:
     def __init__(self):
         self.transport1 = AIOHTTPTransport(url="https://studio.podimo.com/graphql")
@@ -126,12 +133,16 @@ def main():
     else:
         search_string = args.podcast
 
-    podcast = podimo.search_podcast(search_string)
-    if not podcast:
+    if UUID_RE.match(search_string):
+        podcast_id = search_string
+    else:
+        podcast_id = podimo.search_podcast(search_string)["id"]
+
+    if not podcast_id:
         print("Not found!")
         return
 
-    episodes = podimo.get_podcast_episodes(podcast["id"])
+    episodes = podimo.get_podcast_episodes(podcast_id)
 
     if args.premium_only:
         episodes = [x for x in filter(lambda e: e["accessLevel"] == "PREMIUM", episodes)]

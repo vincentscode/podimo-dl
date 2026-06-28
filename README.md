@@ -21,14 +21,14 @@ You will be prompted for your Podimo credentials and the podcast name to search 
 Optionally, create a `config.py` file using the format provided in `config.sample.py` to skip the credential prompts:
 
 ```bash
-python podimo-dl.py --config -p "Podcast Name" --download
+python podimo-dl.py --config -p "Podcast Name or ID" --download
 ```
 
 ### Options
 
 | Flag | Description |
 |------|-------------|
-| `-p / --podcast` | Podcast name to search for |
+| `-p / --podcast` | Podcast name to search for or Podcast ID |
 | `-c / --config` | Load credentials from `config.py` |
 | `-d / --download` | Download without prompting |
 | `--premium-only` | Only download premium episodes |
